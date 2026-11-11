@@ -1,6 +1,6 @@
-# PSRET AFS/PAK 0.1 (`PSRET_AFS_PAK.js`)
+# BT3 Web Modder 0.1 (`BT3_Web_Modder.js`)
 
-A browser-based archive explorer, rebuilder, and **QRS texture decoder** for *Dragon Ball Z: Budokai Tenkaichi 3* (PS2/Wii), built as an unsandboxed **TurboWarp** extension.
+A browser-based archive explorer, rebuilder, and **QRS texture decoder** built specifically for *Dragon Ball Z: Budokai Tenkaichi 3* (PS2/Wii) as an unsandboxed **TurboWarp** extension.
 
 Designed to run natively in modern web browsers with **zero installation**—compatible with Windows, macOS, Linux, iPadOS, and mobile devices (landscape mode recommended on smaller screens).
 
@@ -18,7 +18,7 @@ Designed to run natively in modern web browsers with **zero installation**—com
 
 ## Installation & Quick Start
 
-Need step-by-step instructions on how to load `PSRET_AFS_PAK.js` into TurboWarp? Check out the **[Installation Guide](install-guide.md)**.
+Need step-by-step instructions on how to load `BT3_Web_Modder.js` into TurboWarp? Check out the **[Installation Guide](install-guide.md)**.
 
 ## Known Issues & Work in Progress
 
@@ -33,5 +33,6 @@ Pull requests, bug reports, and test results on different BT3 `.pak` files are w
 ## License
 
 This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) file for details.
+
 
 
