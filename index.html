@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <title>BT3 Desktop Modder v0.1</title>
+  <style>
+    * { box-sizing: border-box; font-family: 'Consolas', 'Courier New', monospace; }
+    body {
+      margin: 0; padding: 24px;
+      background-color: #0D1117; color: #E6EDF3;
+      display: flex; flex-direction: column; height: 100vh;
+    }
+    h1 { color: #00E676; margin: 0 0 6px 0; font-size: 24px; letter-spacing: 1px; }
+    .subtitle { color: #3FB950; font-size: 13px; margin-bottom: 24px; }
+
+    /* Griglia 2x2 dei 4 pulsanti principali */
+    .grid-buttons {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 18px;
+      flex: 1; margin-bottom: 20px;
+    }
+    button.main-btn {
+      background-color: #161B22; color: #00E676;
+      border: 2px solid #238636; border-radius: 6px;
+      padding: 24px; font-size: 17px; font-weight: bold;
+      cursor: pointer; transition: all 0.15s ease;
+    }
+    button.main-btn:hover { background-color: #2EA043; color: #0D1117; border-color: #00E676; }
+    button.main-btn.primary { background-color: #2EA043; color: #0D1117; border-color: #00E676; }
+    button.main-btn.primary:hover { background-color: #00E676; }
+
+    /* Barra di stato stile terminale (senza input comandi per la v0.1) */
+    .status-box {
+      background-color: #090C10; border: 1px solid #2EA043;
+      border-radius: 6px; padding: 12px 14px;
+    }
+    .status-header {
+      color: #238636; font-size: 11px; margin-bottom: 4px; font-weight: bold;
+    }
+    #cli-log {
+      font-size: 13px; color: #3FB950; white-space: pre-wrap;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>&gt; BT3_DESKTOP_MODDER v0.1_</h1>
+  <div class="subtitle">AFS / AFL / Spike PAK Explorer, Rebuilder &amp; QRS 4/8-bit Texture Decoder</div>
+
+  <!-- I 4 TASTI PRINCIPALI -->
+  <div class="grid-buttons">
+    <button class="main-btn primary" onclick="modder.loadAFS()">[ 1. IMPORTA AFS ]</button>
+    <button class="main-btn" onclick="modder.loadAFL()">[ 2. IMPORTA AFL ]</button>
+    <button class="main-btn" onclick="modder.openExplorer()">[ 3. APRI ARCHIVIO IMPORTATO ]</button>
+    <button class="main-btn" onclick="modder.createAFSFromZIP()">[ 4. CREA AFS DA ZIP ]</button>
+  </div>
+
+  <!-- BARRA DI STATO -->
+  <div class="status-box">
+    <div class="status-header">SYSTEM_STATUS // LOG</div>
+    <div id="cli-log">[PRONTO] In attesa di un file .AFS, .AFL o .ZIP...</div>
+  </div>
+
+  <script src="bt3_core.js"></script>
+</body>
+</html>
