@@ -1,0 +1,27 @@
+{
+  "name": "bt3-desktop-modder",
+  "version": "0.1.0",
+  "description": "BT3 Desktop Modder - AFS/AFL/PAK Explorer & QRS 4/8-bit Texture Decoder",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build-win": "electron-builder --win portable",
+    "build-mac": "electron-builder --mac",
+    "build-linux": "electron-builder --linux AppImage"
+  },
+  "build": {
+    "appId": "com.communistgoku5317.bt3desktopmodder",
+    "productName": "BT3 Desktop Modder",
+    "artifactName": "BT3_Desktop_Modder_v${version}.${ext}",
+    "win": {
+      "target": "portable"
+    },
+    "mac": {
+      "target": "dmg"
+    }
+  },
+  "devDependencies": {
+    "electron": "^33.0.0",
+    "electron-builder": "^25.1.8"
+  }
+}
