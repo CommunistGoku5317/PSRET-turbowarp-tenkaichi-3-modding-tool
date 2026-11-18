@@ -1,44 +1,44 @@
-name: Build BT3 Desktop Modder v0.1
+name: Build Auto BT3 Desktop Modder
 
 on:
+  push:
+    branches: [ main, master ]
+    paths:
+      - 'win-lin-app/**'
   workflow_dispatch:
 
 jobs:
   build:
-    runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
-        os: [windows-latest, macos-latest]
+        os: [ubuntu-latest, windows-latest]
+
+    runs-on: ${{ matrix.os }}
+
+    defaults:
+      run:
+        working-directory: ./win-lin-app
 
     steps:
-      - name: Scarica il codice del repository
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Configura Node.js
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
 
-      - name: Installa Electron
-        working-directory: ./win-mac-app
-        run: npm install
+      - name: Installa dipendenze
+        run: npm install --no-audit --no-fund
 
-      - name: Compila per Windows
-        if: matrix.os == 'windows-latest'
-        working-directory: ./win-mac-app
-        run: npm run build-win
+      - name: Compila per ${{ matrix.os }}
+        run: npx electron-builder --publish never
 
-      - name: Compila per macOS
-        if: matrix.os == 'macos-latest'
-        working-directory: ./win-mac-app
-        run: npx electron-builder --mac --publish never
-
-      - name: Salva gli eseguibili pronti
+      - name: Carica eseguibili negli Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: BT3-Modder-${{ matrix.os }}
+          name: BT3-Desktop-Modder-${{ matrix.os }}
           path: |
-            win-mac-app/dist/*.exe
-            win-mac-app/dist/*.dmg
-            win-mac-app/dist/*.zip
-         
+            win-lin-app/dist/*.exe
+            win-lin-app/dist/*.AppImage
