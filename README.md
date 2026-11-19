@@ -30,6 +30,10 @@ Need step-by-step instructions on how to load `BT3_Web_Modder.js` into TurboWarp
 
 Pull requests, bug reports, and test results on different BT3 `.pak` files are welcome! If you have insights into PS2 GS `PSMT4` page strides or Spike's QRS CLUT pairing, feel free to open an Issue.
 
+## Credits & Special Thanks
+- **KkTeam (`KkTeamQrsExplorer`)**: Special thanks to KkTeam for their pioneering reverse-engineering work on Spike's QRS texture formats and PS2 GS swizzling, which served as a crucial reference for building this web-based decoder.
+
+
 ## License
 
 This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) file for details.
