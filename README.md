@@ -5,7 +5,7 @@ A browser-based and desktop archive explorer, rebuilder, and **QRS texture decod
 ## Available Editions
 
 * **🌐 BT3 Web Modder (`BT3_Web_Modder.js`):** Unsandboxed extension for TurboWarp / CodeTorch.
-* **🖥️ BT3 Desktop Modder (`v0.1`):** Standalone utility with a **GUI Mode** (quick import for `.AFS`, `.PAK`, `.AFL` and `.ZIP` building) and a **Scriptable CLI Mode** supporting `.PSRTCM`(new propietary file) scripts.
+* **🖥️ BT3 Desktop Modder (`v0.1`):** Standalone utility with a **GUI Mode** (quick import for `.AFS`, `.PAK`, `.AFL` and `.ZIP` building) and a **Scriptable CLI Mode** supporting `.PSRTCM` scripts.
 
 ## Core Features
 
@@ -25,5 +25,7 @@ A browser-based and desktop archive explorer, rebuilder, and **QRS texture decod
 
 ## Credits & License
 
-* **Credits:** Special thanks to **KkTeam (`KkTeamQrsExplorer`)** for reverse-engineering Spike's QRS texture formats and PS2 GS swizzling.
+* **Credits:**
+  * Special thanks to **KkTeam (`KkTeamQrsExplorer`)** for reverse-engineering Spike's QRS texture formats and PS2 GS swizzling.
+  * Special thanks to **[z3xox](https://github.com/z3xox)** and the **[BT3-Decompiled](https://github.com/z3xox/BT3-Decompiled)** / **[Tenkaichi3Decomp](https://github.com/z3xox/Tenkaichi3Decomp)** projects for their open-source decompilation work on *Dragon Ball Z: Budokai Tenkaichi 3*, which provided invaluable insight into the game's internal functions and asset loaders.
 * **License:** Licensed under the **MIT License** (see [LICENSE](LICENSE)).
