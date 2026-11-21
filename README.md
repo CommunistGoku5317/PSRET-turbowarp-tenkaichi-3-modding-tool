@@ -5,7 +5,7 @@ A browser-based and desktop archive explorer, rebuilder, and **QRS texture decod
 ## Available Editions
 
 * **🌐 BT3 Web Modder (`BT3_Web_Modder.js`):** Unsandboxed extension for TurboWarp / CodeTorch.
-* **🖥️ BT3 Desktop Modder (`v0.1`):** Standalone utility with a **GUI Mode** (quick import for `.AFS`, `.PAK`, `.AFL` and `.ZIP` building) and a **Scriptable CLI Mode** supporting `.PSRTCM` scripts.
+* **🖥️ BT3 Desktop Modder (`v0.1`):** Standalone utility with a **GUI Mode** (quick import for `.AFS`, `.PAK`, `.AFL` and `.ZIP` building) and a **Scriptable CLI Mode** supporting `.PSRTCM`(new propietary file) scripts.
 
 ## Core Features
 
