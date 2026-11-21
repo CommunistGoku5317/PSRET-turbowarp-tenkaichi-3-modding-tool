@@ -1,42 +1,29 @@
-# BT3 Web Modder 0.1 (`BT3_Web_Modder.js`)
+# BT3 Modder 0.1 (`BT3_Web_Modder.js` & `BT3_Desktop_Modder`)
 
-A browser-based archive explorer, rebuilder, and **QRS texture decoder** built specifically for *Dragon Ball Z: Budokai Tenkaichi 3* (PS2/Wii) as an unsandboxed **TurboWarp** extension.
+A browser-based and desktop archive explorer, rebuilder, and **QRS texture decoder** for *Dragon Ball Z: Budokai Tenkaichi 3* (PS2/Wii), available as a TurboWarp extension and a standalone desktop app.
 
-Designed to run natively in modern web browsers with **zero installation**—compatible with Windows, macOS, Linux, iPadOS, and mobile devices (landscape mode recommended on smaller screens).
+## Available Editions
 
-## Features
+* **🌐 BT3 Web Modder (`BT3_Web_Modder.js`):** Unsandboxed extension for TurboWarp / CodeTorch.
+* **🖥️ BT3 Desktop Modder (`v0.1`):** Standalone utility with a **GUI Mode** (quick import for `.AFS`, `.PAK`, `.AFL` and `.ZIP` building) and a **Scriptable CLI Mode** supporting `.PSRTCM` scripts.
 
-* **AFS, AFL & Spike PAK Support:** Browse, search, and extract files from `.afs` and `.pak` archives, including **nested archives** inside entries.
-* **Memory-Efficient Streaming:** Uses `blob.slice()` chunked reading so multi-gigabyte archives can be inspected even on low-RAM devices.
-* **Archive Rebuilding:**
-  * Replace individual AFS entries with automatic `2048-byte` alignment.
-  * Build a brand-new `.afs` archive directly from a `.zip` file.
-  * Export entire archives or file tables to `.zip`, `.txt`, and `.csv`.
-* **Built-in QRS Texture Decoder (4-bit & 8-bit):**
-  * Reconstructed from static analysis of the original loader (`0x404780` mapper, PS2 GS swizzling tables, and CT32 CSM1 CLUT unscrambling).
-  * Instant canvas preview inside the explorer UI and one-click **PNG export**.
+## Core Features
 
-## Installation & Quick Start
+* **Archive Support:** Browse, search, and extract `.afs`, `.pak`, and `.afl` files (including nested archives) with memory-efficient streaming via `blob.slice()`.
+* **Rebuilding & Export:** Replace AFS entries with `2048-byte` alignment, build `.afs` archives from `.zip` files, and export data to `.zip`, `.txt`, and `.csv`.
+* **QRS Texture Decoder (4-bit & 8-bit):** Features static analysis from the original loader (`0x404780` mapper, PS2 GS swizzling, CT32 CSM1 CLUT unscrambling), live canvas preview, and one-click PNG export.
 
-Need step-by-step instructions on how to load `BT3_Web_Modder.js` into TurboWarp? Check out the **[Installation Guide](install-guide.md)**.
+## Screenshots & Layout
 
-## Known Issues & Work in Progress
+* **Web Edition:** Includes AFS Explorer, QRS Texture Decoder, and custom TurboWarp/Scratch blocks.
+* **Desktop Edition:** Features a Graphical User Interface (GUI) and a Scriptable Terminal (`.PSRTCM`).
 
-* **Deswizzling / Page Stride:** Some texture geometries still exhibit vertical row overlapping or tiling artifacts (`PSMT4` / `PSMCT32` page wrapping).
-* **Palette Pairing & Creation:** Shared CLUTs in multi-texture PAK entries occasionally link to the wrong palette descriptor.
-* **PNG Re-import:** Texture encoding/replacement (`encodeQrs4Texture` / `encodeQrs8Texture`) is still incomplete and experimental.
+## Quick Start & Roadmap
 
-## Contributing
+* **Installation:** Use the **[Installation Guide](Install-guide.md)** for TurboWarp setup or grab the latest build from the **[Releases](../../releases)** page.
+* **Known Issues:** Ongoing work includes fixing `PSMT4`/`PSMCT32` page wrapping/deswizzling artifacts, multi-texture PAK palette pairing, and experimental PNG re-import (`encodeQrs4Texture` / `encodeQrs8Texture`).
 
-Pull requests, bug reports, and test results on different BT3 `.pak` files are welcome! If you have insights into PS2 GS `PSMT4` page strides or Spike's QRS CLUT pairing, feel free to open an Issue.
+## Credits & License
 
-## Credits & Special Thanks
-- **KkTeam (`KkTeamQrsExplorer`)**: Special thanks to KkTeam for their pioneering reverse-engineering work on Spike's QRS texture formats and PS2 GS swizzling, which served as a crucial reference for building this web-based decoder.
-
-
-## License
-
-This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) file for details.
-
-
-
+* **Credits:** Special thanks to **KkTeam (`KkTeamQrsExplorer`)** for reverse-engineering Spike's QRS texture formats and PS2 GS swizzling.
+* **License:** Licensed under the **MIT License** (see [LICENSE](LICENSE)).
