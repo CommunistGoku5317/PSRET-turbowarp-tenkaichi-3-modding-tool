@@ -35,7 +35,6 @@ jobs:
           ./build/bt3_archive_cli 2>&1 | grep -q 'Usage:'
           bash tests_smoke_archive_cli.sh ./build/bt3_archive_cli bsdtar
 
-
   windows:
     runs-on: windows-latest
     steps:
@@ -80,7 +79,7 @@ jobs:
           path: web/dist/
 
   deploy:
-    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    if: github.event_name != 'pull_request' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/wasm-core-prototype')
     needs: web
     runs-on: ubuntu-latest
     environment:
