@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="it">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="BT3 Modder Web: esplora archivi AFS, AFL, PAK, 7z, RAR e immagini ISO." />
+    <title>BT3 Modder — Web Edition</title>
+    <link rel="stylesheet" href="./src/style.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <header class="header">
+        <div>
+          <p class="eyebrow">BT3 MODDER · 0.2 PROTOTYPE</p>
+          <h1>Web Edition</h1>
+          <p class="subtitle">Esplora container e archivi di Budokai Tenkaichi 3.</p>
+        </div>
+        <span class="state" id="core-state">Core WASM: controllo…</span>
+      </header>
+
+      <section class="toolbar" aria-label="Caricamento file">
+        <label class="file-button" for="archive-file">Apri archivio / immagine</label>
+        <input id="archive-file" type="file" accept=".afs,.afl,.pak,.7z,.rar,.iso,.zip,.tar,.bin,application/octet-stream" />
+        <label class="file-button secondary" for="afl-file">Carica nomi AFL</label>
+        <input id="afl-file" type="file" accept=".afl,application/octet-stream" />
+        <button id="back-button" class="secondary" disabled>← Indietro</button>
+      </section>
+
+      <p class="status" id="status" role="status">Seleziona un file per iniziare.</p>
+
+      <section class="panel">
+        <div class="panel-heading">
+          <div>
+            <h2 id="archive-title">Nessun archivio aperto</h2>
+            <p id="archive-meta">AFS / AFL / PAK tramite core C/WASM; 7z / RAR / ISO tramite libarchive-WASM.</p>
+          </div>
+          <button id="download-button" disabled>Estrai selezionato</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Nome</th><th>Dimensione</th><th>Offset</th><th>Stato</th></tr></thead>
+            <tbody id="entry-list"><tr><td colspan="4" class="empty">Carica un file.</td></tr></tbody>
+          </table>
+        </div>
+      </section>
+
+      <footer>
+        <p>Il browser deve caricare l’intero file in memoria per analizzare 7z/RAR/ISO. Per immagini disco molto grandi usa la versione desktop.</p>
+        <p>Il decoder e il preview QRS esistenti restano separati da questo prototipo: non vengono sostituiti finché i test di confronto non sono completi.</p>
+      </footer>
+    </main>
+    <script src="./bt3_core.js"></script>
+    <script type="module" src="./src/main.js"></script>
+  </body>
+</html>

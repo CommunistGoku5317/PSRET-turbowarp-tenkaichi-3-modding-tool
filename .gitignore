@@ -1,0 +1,5 @@
+/build/
+/web/node_modules/
+/web/dist/
+/web/public/bt3_core.js
+/web/public/bt3_core.wasm

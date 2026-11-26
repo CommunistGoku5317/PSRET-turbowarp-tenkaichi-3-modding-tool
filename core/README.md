@@ -1,51 +1,63 @@
-# BT3 Core (prototype)
+# BT3 shared C core
 
-This directory starts the shared C core for the TurboWarp, Web, and standalone desktop editions.
+This is the shared, UI-independent parser used by the native desktop tools and by the browser edition after compiling it to WebAssembly.
 
-## Current scope
+## Implemented in this prototype
 
-The first prototype validates the Spike PAK header and returns entry ranges. It deliberately does **not** decode QRS textures yet. QRS parsing, palette association, swizzling, and PNG encoding will be ported only after the C tests can be compared against known-good fixtures.
+- **Spike PAK:** validates the count/offset table and reports entry ranges. It follows the checked-in JavaScript parser's current rules: a non-zero entry count, first payload offset after the table and 16-byte aligned, monotonically increasing offsets inside the file. Extra bytes after the final indexed entry are tolerated to preserve existing behavior.
+- **AFS:** validates the `AFS\0` header and `(offset, size)` table. It reports each entry range as valid or invalid instead of rejecting a whole archive because one entry range is bad, matching the existing web parser's behavior.
+- **AFL:** validates the `AFL\0` header and 32-byte names table, with the count stored at byte 12, and exposes a trimmed entry name.
+- **Container identification:** detects structurally valid AFS, PAK, or AFL input.
 
-## Compatibility requirements (must not regress)
+The core does not yet decode QRS textures, pair palettes, encode replacement PNGs, or rebuild AFS/PAK files. Those operations remain in the current JavaScript implementation until their output can be compared against independent fixtures.
 
-The new architecture must retain the archive and disc-image formats already supported by the existing BT3 Modder:
+## Native build and tests
 
-- **7z** archives: open/list/extract, including nested archives where the current edition supports them.
-- **RAR** archives: open/list/extract, including nested archives where the current edition supports them.
-- **ISO** disc images: open and browse the existing supported ISO filesystem/content.
-- **AFS, AFL, and Spike PAK**: preserve existing browse, extraction, and rebuild workflows.
-- **QRS textures**: preserve 4-bit/8-bit preview/export and existing replacement workflows while the decoder is ported and independently verified.
-
-Do not replace working 7z/RAR support with a new untested parser. Prefer retaining the current proven archive adapter or integrating a maintained library compiled to WebAssembly for the web build and native for desktop. Check library licensing and verify the exact supported RAR/7z variants before shipping. ISO support must likewise preserve the current behavior; do not assume ISO9660 alone covers every image the existing tool accepts.
-
-The archive-format layer and the game-specific PAK/QRS layer should remain separate. A 7z/RAR/ISO container can expose an AFS or PAK file to the existing game-format handlers; opening the container must not require duplicating the PAK/QRS implementation.
-
-## Native test
+From the repository root:
 
 ```sh
-cc -std=c11 -Wall -Wextra -Werror -pedantic bt3_core.c test_bt3_core.c -o bt3_core_tests
-./bt3_core_tests
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build --parallel
+ctest --test-dir build --output-on-failure
 ```
+
+The tests cover valid and malformed PAK/AFS/AFL tables, invalid entry ranges, entry names, and container identification.
 
 ## WebAssembly build
 
-Install the Emscripten SDK, then from this directory run:
+Install the Emscripten SDK and make sure `emcc` is on `PATH`. From `web/` run:
 
 ```sh
-emcc bt3_core.c -O2 -std=c11 -Wall -Wextra -Werror \
-  -sSTRICT -sMODULARIZE -sEXPORT_NAME=BT3Core \
-  -sENVIRONMENT=web,worker \
-  -sEXPORTED_FUNCTIONS=_bt3_pak_validate,_bt3_pak_entry_range,_bt3_status_message,_malloc,_free \
-  -sEXPORTED_RUNTIME_METHODS=ccall,cwrap \
-  -o ../web/bt3_core.js
+npm install
+npm run build:wasm
+npm run dev
 ```
 
-The generated JavaScript loader and `bt3_core.wasm` must be served together over HTTP(S). The browser frontend will wait for the asynchronous module initialization before enabling file operations.
+The build writes `web/public/bt3_core.js` and `web/public/bt3_core.wasm`. The Vite app loads the generated module asynchronously. For the production bundle, use `npm run build`.
 
-## Design rules
+## Desktop archive reader
 
-- Keep file-format logic independent of TurboWarp, DOM, and desktop UI code.
-- Keep the native and WebAssembly builds on the same C source.
-- Every parser change must have native tests and fixture comparisons before it is used by an edition.
-- C/WebAssembly is not assumed to fix format bugs by itself; correctness comes from tests and verified format rules.
-- All three editions must pass the same compatibility test suite, including 7z, RAR, ISO, AFS, AFL, PAK, and QRS regression fixtures.
+When CMake finds LibArchive, it also builds `bt3_archive_cli`. It lists entries in supported generic containers and can extract one regular file by index:
+
+```sh
+./build/bt3_archive_cli game.7z
+./build/bt3_archive_cli --extract 12 game.7z ./out
+```
+
+The CLI requires a new output directory, rejects absolute archive paths and `..` traversal, creates subdirectories under that fresh root, and only writes regular files. It does not extract symlinks or hardlinks.
+
+## Format compatibility requirements
+
+- Preserve **7z** and **RAR/RAR5** open/list/extract paths. LibArchive's RAR coverage has limitations and should be verified against real files used by the project.
+- Preserve **ISO** browsing/extraction. LibArchive provides an ISO9660 reader with Joliet/Rock Ridge support depending on build; this is not a guarantee for UDF or every proprietary disc layout.
+- Keep **AFS, AFL, and Spike PAK** handlers separate from generic container handling. A 7z/RAR/ISO container may contain an AFS or PAK that is then passed to this core.
+- Keep current **QRS 4-bit/8-bit preview and replacement** behavior untouched until independent image fixtures verify a port.
+
+The browser prototype uses `archive-wasm` 2.1.0 (LibArchive compiled to WebAssembly) for generic containers. The native CLI uses the system LibArchive. Both use the same format-family implementation, but platform/build differences and RAR variants still need fixture testing. See the top-level README and `web/README.md` for the currently verified scope.
+
+## Rules for future changes
+
+- No browser DOM, TurboWarp, filesystem, or UI dependencies in this directory.
+- Compile the same C sources natively and with Emscripten.
+- Do not change format rules based on guesswork. Add real fixtures and tests first.
+- Do not replace working archive/QRS code until the new path passes parity tests.

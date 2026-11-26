@@ -1,0 +1,76 @@
+name: BT3 Modder build and tests
+
+on:
+  push:
+    branches: [main, wasm-core-prototype]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  native:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install native dependencies
+        run: sudo apt-get update && sudo apt-get install -y cmake build-essential libarchive-dev libarchive-tools
+      - name: Configure
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DBT3_BUILD_ARCHIVE_CLI=ON
+      - name: Build
+        run: cmake --build build --parallel
+      - name: Run core tests
+        run: ctest --test-dir build --output-on-failure
+      - name: Verify command-line tools
+        run: |
+          ./build/bt3_inspect 2>&1 | grep -q 'Usage:'
+          ./build/bt3_archive_cli 2>&1 | grep -q 'Usage:'
+          bash tests_smoke_archive_cli.sh ./build/bt3_archive_cli bsdtar
+
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: mymindstorm/setup-emsdk@v14
+        with:
+          version: 4.0.5
+          actions-cache-folder: emsdk-cache
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install web dependencies
+        working-directory: web
+        run: npm install
+      - name: Build WebAssembly and browser app
+        working-directory: web
+        run: npm run build
+      - name: Upload Pages artifact
+        if: github.event_name != 'pull_request'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: web/dist/
+      - name: Upload inspectable web bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: bt3-modder-web-dist
+          path: web/dist/
+
+  deploy:
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    needs: web
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
