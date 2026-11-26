@@ -1,11 +1,24 @@
-# TurboWarp integration status
+# TurboWarp integration
 
-`BT3-Web-Modder.js` remains the stable TurboWarp extension and its existing AFS/PAK/AFL/QRS JavaScript paths are not overwritten by the experimental WASM core.
+The experimental **BT3 Pages Bridge** is an unsandboxed TurboWarp extension that communicates with the browser engine hosted on GitHub Pages using a hidden iframe and `postMessage`.
 
-The new shared C core is already structured for WebAssembly and the browser edition uses it for AFS/PAK/AFL table parsing. The generic 7z/RAR/ISO reader currently lives in the Web Edition through `archive-wasm`; it is **not yet wired into the existing TurboWarp extension UI**. Do not advertise those formats as available in TurboWarp until the extension has an adapter and regression tests for nested entries, extraction, memory use, and offline behavior.
+## Load in TurboWarp
 
-## Planned connection
+1. Open TurboWarp and choose **Add Extension → Custom Extension → URL**.
+2. Paste this raw URL:
+`https://raw.githubusercontent.com/CommunistGoku5317/PSRET-turbowarp-tenkaichi-3-modding-tool/wasm-core-prototype/integrations/turbowarp/bt3-pages-bridge.js`
+3. Enable **Run without sandbox** when prompted. This is required for the file picker and iframe.
+4. Run **connetti al motore BT3 Pages** and wait for the status reporter to say the engine is connected.
+5. Run **apri archivio con BT3 Modder** and choose a local file.
+6. Read **voci archivio (JSON)** for the entry list. Use **estrai voce numero (1-based)** to download a selected file.
 
-The intended TurboWarp mode can load the archive runtime and BT3 core from the hosted Web Edition, while the existing JavaScript code remains the offline fallback for AFS/PAK/QRS. This requires the GitHub Pages build to be deployed first and a hosted-adapter handshake to be added to the extension. Loading a remote WASM module must remain optional: if the site is unavailable, current local AFS/PAK workflows must still run.
+## Current limitations
 
-The extension's QRS decoder is not replaced by this prototype. It must be parity-tested against known-good texture fixtures before migration.
+- Requires an internet connection and a successful GitHub Pages deployment.
+- Uses a hidden iframe; the TurboWarp project does not upload files to a server. File bytes are processed in the browser.
+- The extension currently exposes open/list/extract only. It does not yet expose QRS texture preview/replacement or archive editing/repacking.
+- The C/WASM core currently validates AFS/PAK/AFL tables; 7z/RAR/ISO reading is handled by the browser-side `archive-wasm` package.
+- Nested archives can be opened in the web UI, but the extension bridge currently exposes only the top-level entry list and extraction.
+- Test with copies of files first. Large archives may use substantial browser memory.
+
+This is a prototype; do not replace the existing stable `BT3-Web-Modder.js` extension with it yet.
