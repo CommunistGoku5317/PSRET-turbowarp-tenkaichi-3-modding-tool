@@ -1,10 +1,6 @@
-// TurboWarp <-> GitHub Pages bridge. Load as an unsandboxed TurboWarp extension.
+// TurboWarp <-> GitHub Pages bridge. Designed to run in TurboWarp's extension sandbox.
 (function (Scratch) {
   'use strict';
-  if (!Scratch.extensions.unsandboxed) {
-    throw new Error('BT3 Pages Bridge richiede un’estensione non sandboxata.');
-  }
-
   const PAGE_URL = 'https://communistgoku5317.github.io/PSRET-turbowarp-tenkaichi-3-modding-tool/';
   let frame, input, ready = false, pending = new Map(), sequence = 0;
   let lastEntries = '[]', lastStatus = 'Non connesso';
