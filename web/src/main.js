@@ -207,3 +207,33 @@ getCore().then(() => {
   coreState.textContent = 'Core WASM: non compilato'
   coreState.title = error.message
 })
+
+
+// Optional TurboWarp parent-frame bridge. Only the embedding parent may issue requests.
+let bridgeArchive = null;
+if (window.parent !== window) {
+  window.addEventListener('message', async (event) => {
+    if (event.source !== window.parent || !event.data || event.data.type !== 'bt3-request') return;
+    const msg = event.data;
+    const reply = (payload, transfer = []) => event.source.postMessage({ type: 'bt3-result', id: msg.id, ...payload }, event.origin, transfer);
+    try {
+      if (msg.action === 'open') {
+        if (!(msg.buffer instanceof ArrayBuffer)) throw new Error('File non ricevuto.');
+        bridgeArchive = await openBytes(new Uint8Array(msg.buffer), String(msg.name || 'archivio'));
+        reply({ message: bridgeArchive.type + ': ' + bridgeArchive.entries.length + ' voci caricate.',
+          entries: bridgeArchive.entries.map((e, i) => ({ index: i + 1, name: e.name, size: e.size || 0, valid: !!e.valid, type: e.kind || '' })) });
+      } else if (msg.action === 'extract') {
+        const index = Number(msg.index);
+        const item = bridgeArchive && bridgeArchive.entries[index];
+        if (!item || !item.valid) throw new Error('Indice non valido o voce non estraibile.');
+        const bytes = item.getData();
+        if (!bytes) throw new Error('Contenuto non disponibile.');
+        const buffer = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
+        reply({ name: item.name, buffer }, [buffer]);
+      } else {
+        throw new Error('Azione non supportata: ' + msg.action);
+      }
+    } catch (error) { reply({ error: error && error.message ? error.message : String(error) }); }
+  });
+  window.parent.postMessage({ type: 'bt3-ready' }, '*');
+}
