@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(BT3ModderCore VERSION 0.2.0 LANGUAGES C)
+project(BT3ModderCore VERSION 0.3.0 LANGUAGES C)
 
 option(BT3_BUILD_ARCHIVE_CLI "Build the libarchive-backed 7z/RAR/ISO desktop CLI" ON)
 
