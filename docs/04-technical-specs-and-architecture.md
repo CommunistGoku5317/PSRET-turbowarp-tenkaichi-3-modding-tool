@@ -285,7 +285,7 @@ The QRS decoder includes explicit PS2 GS-oriented address mapping. It is not a p
 - scatterDwords404600() reads source words with DataView.getUint32(..., true) and writes them with setUint32(..., true), so the word transfer is explicitly little-endian.
 - The 8-bit path uses CT32 CSM1 palette storage remapping, described below.
 
-These tables and helper functions are embedded in the source and exported by the QRS module. The source contains both active decode paths and alternate/reference routines; porting work should follow the actual top-level call chain rather than assuming every helper is active.
+These tables and helper functions are embedded in the source and exported by the QRS module. The source contains both active decode paths and alternate/reference routines; porting work should follow the actual top-level call chain rather than assuming every helper is active. **No separate Wii-specific swizzle or byte-order branch is implemented in this file.** The code uses the same GS-oriented address helpers for the QRS path; do not infer an additional Wii layout from the repository's PS2/Wii target description.
 
 ## 8. CLUT / palette decoding and RGBA conversion
 
