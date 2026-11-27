@@ -5,6 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="BT3 Modder Web: esplora archivi AFS, AFL, PAK, 7z, RAR e immagini ISO." />
     <title>BT3 Modder — Web Edition</title>
+    <script>
+      if (new URLSearchParams(location.search).has('turbowarpStage')) {
+        document.documentElement.classList.add('turbowarp-stage');
+      }
+    </script>
     <link rel="stylesheet" href="./src/style.css" />
   </head>
   <body>
@@ -15,7 +20,10 @@
           <h1>Web Edition</h1>
           <p class="subtitle">Esplora container e archivi di Budokai Tenkaichi 3.</p>
         </div>
-        <span class="state" id="core-state">Core WASM: controllo…</span>
+        <div class="header-actions">
+          <span class="state" id="core-state">Core WASM: controllo…</span>
+          <button id="close-embed" class="embed-close" type="button" hidden>Chiudi</button>
+        </div>
       </header>
 
       <section class="toolbar" aria-label="Caricamento file">
