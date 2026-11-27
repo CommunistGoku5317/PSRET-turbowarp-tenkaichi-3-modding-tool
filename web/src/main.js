@@ -17,7 +17,21 @@ let stack = []
 let selected = -1
 let selectedData = null
 
-function say(message) { status.textContent = message }
+const stageEmbed = new URLSearchParams(location.search).has('turbowarpStage');
+const closeEmbed = byId('close-embed');
+if (stageEmbed && closeEmbed) {
+  closeEmbed.hidden = false;
+  closeEmbed.addEventListener('click', () => {
+    if (window.parent !== window) window.parent.postMessage({ type: 'bt3-close' }, '*');
+  });
+}
+
+function say(message) {
+  status.textContent = message;
+  if (stageEmbed && window.parent !== window) {
+    window.parent.postMessage({ type: 'bt3-status', message: String(message) }, '*');
+  }
+}
 
 async function getCore() {
   if (!corePromise) {
