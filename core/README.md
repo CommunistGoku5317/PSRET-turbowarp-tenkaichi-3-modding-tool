@@ -1,15 +1,15 @@
-# BT3 shared C core
+# BT3 shared C core — 0.3.0
 
 This is the shared, UI-independent parser used by the native desktop tools and by the browser edition after compiling it to WebAssembly.
 
-## Implemented in this prototype
+## Implemented in 0.3.0
 
 - **Spike PAK:** validates the count/offset table and reports entry ranges. It follows the checked-in JavaScript parser's current rules: a non-zero entry count, first payload offset after the table and 16-byte aligned, monotonically increasing offsets inside the file. Extra bytes after the final indexed entry are tolerated to preserve existing behavior.
 - **AFS:** validates the `AFS\0` header and `(offset, size)` table. It reports each entry range as valid or invalid instead of rejecting a whole archive because one entry range is bad, matching the existing web parser's behavior.
 - **AFL:** validates the `AFL\0` header and 32-byte names table, with the count stored at byte 12, and exposes a trimmed entry name.
 - **Container identification:** detects structurally valid AFS, PAK, or AFL input.
 
-The core does not yet decode QRS textures, pair palettes, encode replacement PNGs, or rebuild AFS/PAK files. Those operations remain in the current JavaScript implementation until their output can be compared against independent fixtures.
+The core does **not** decode QRS textures, pair palettes, encode replacement PNGs, or rebuild AFS/PAK files. Those operations remain in the current JavaScript implementation until their output can be compared against independent fixtures.
 
 ## Native build and tests
 
@@ -25,7 +25,7 @@ The tests cover valid and malformed PAK/AFS/AFL tables, invalid entry ranges, en
 
 ## WebAssembly build
 
-Install the Emscripten SDK and make sure `emcc` is on `PATH`. From `web/` run:
+Install the Emscripten SDK and make sure `emcc` is on `PATH`. From `web/`:
 
 ```sh
 npm install
@@ -53,7 +53,7 @@ The CLI requires a new output directory, rejects absolute archive paths and `..`
 - Keep **AFS, AFL, and Spike PAK** handlers separate from generic container handling. A 7z/RAR/ISO container may contain an AFS or PAK that is then passed to this core.
 - Keep current **QRS 4-bit/8-bit preview and replacement** behavior untouched until independent image fixtures verify a port.
 
-The browser prototype uses `archive-wasm` 2.1.0 (LibArchive compiled to WebAssembly) for generic containers. The native CLI uses the system LibArchive. Both use the same format-family implementation, but platform/build differences and RAR variants still need fixture testing. See the top-level README and `web/README.md` for the currently verified scope.
+The browser prototype uses `archive-wasm` 2.1.0 (LibArchive compiled to WebAssembly) for generic containers. The native CLI uses the system LibArchive. Both use the same format-family implementation, but platform/build differences and RAR variants still need fixture testing. See the top-level README and `web/README.md`.
 
 ## Rules for future changes
 
