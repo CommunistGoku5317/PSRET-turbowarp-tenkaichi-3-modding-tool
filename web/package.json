@@ -1,11 +1,11 @@
 {
   "name": "bt3-modder-web",
   "private": true,
-  "version": "0.2.0",
+  "version": "0.3.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build:wasm": "emcc ../core/bt3_core.c -I../core -O2 -std=c11 -sMODULARIZE=1 -sEXPORT_NAME=BT3Core -sENVIRONMENT=web -sALLOW_MEMORY_GROWTH=1 -sEXPORTED_FUNCTIONS='[\"_bt3_pak_validate\",\"_bt3_pak_entry_info\",\"_bt3_afs_validate\",\"_bt3_afs_entry_info\",\"_bt3_afl_validate\",\"_bt3_afl_entry_name\",\"_bt3_container_kind\",\"_bt3_status_message\",\"_malloc\",\"_free\"]' -o public/bt3_core.js",
+    "build:wasm": "emcc ../core/bt3_core.c -I../core -O2 -std=c11 -sMODULARIZE=1 -sEXPORT_NAME=BT3Core -sENVIRONMENT=web -sALLOW_MEMORY_GROWTH=1 -sEXPORTED_FUNCTIONS='["_bt3_pak_validate","_bt3_pak_entry_info","_bt3_afs_validate","_bt3_afs_entry_info","_bt3_afl_validate","_bt3_afl_entry_name","_bt3_container_kind","_bt3_status_message","_malloc","_free"]' -o public/bt3_core.js",
     "build": "npm run build:wasm && vite build",
     "preview": "vite preview"
   },
