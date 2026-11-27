@@ -23,6 +23,15 @@ A browser-based and desktop archive explorer, rebuilder, and **QRS texture decod
 * **Installation:** Use the **[Installation Guide](Install-guide.md)** for TurboWarp setup or grab the latest build from the **[Releases](../../releases)** page.
 * **Known Issues:** Ongoing work includes fixing `PSMT4`/`PSMCT32` page wrapping/deswizzling artifacts, multi-texture PAK palette pairing, and experimental PNG re-import (`encodeQrs4Texture` / `encodeQrs8Texture`).
 
+## Documentation
+
+The detailed documentation for the TurboWarp web extension is available in [docs/](docs/):
+
+* [Getting Started](docs/01-getting-started.md)
+* [Blocks Reference](docs/02-blocks-reference.md)
+* [Texture Modding Tutorial](docs/03-texture-modding-tutorial.md)
+* [Technical Specs and Architecture](docs/04-technical-specs-and-architecture.md)
+
 ## Credits & License
 
 * **Credits:**
