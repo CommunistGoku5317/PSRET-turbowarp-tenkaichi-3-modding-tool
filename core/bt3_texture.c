@@ -23,8 +23,9 @@ static void write_u32_le(uint8_t *p, uint32_t value) {
 static int range_valid(size_t size, uint32_t word_offset, uint32_t byte_size,
                        size_t table_end, uint32_t *byte_offset) {
     uint64_t offset = (uint64_t)word_offset * 4u;
-    if (word_offset == 0u || offset > UINT32_MAX || offset < table_end) return 0;
+    if (word_offset == 0u || offset > UINT32_MAX || offset < BT3_TEX_HEADER_SIZE) return 0;
     if (offset > size || (uint64_t)byte_size > (uint64_t)size - offset) return 0;
+    (void)table_end; /* The decomp relocates offsets from file base; payload ordering is not prescribed. */
     if (byte_offset != NULL) *byte_offset = (uint32_t)offset;
     return 1;
 }
@@ -143,6 +144,10 @@ static Bt3TexStatus scan_vif(const uint8_t *data, size_t size,
         if (value == BT3_VIF_TEX) {
             uint32_t lo, hi, tbp, cbp;
             if (i + 10u >= words) return BT3_TEX_ERR_ENTRY_TABLE;
+            for (size_t j = i + 1u; j <= i + 10u; ++j) {
+                if (read_u32_le(data + j * 4u) == BT3_VIF_END)
+                    return BT3_TEX_ERR_ENTRY_TABLE;
+            }
             lo = read_u32_le(data + (i + 5u) * 4u);
             hi = read_u32_le(data + (i + 6u) * 4u);
             tbp = lo & 0x3FFFu;
