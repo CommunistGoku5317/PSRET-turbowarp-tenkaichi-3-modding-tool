@@ -33,6 +33,9 @@ jobs:
       - name: Install dependencies
         working-directory: web
         run: npm install --no-audit --no-fund
+      - name: Check JavaScript syntax
+        working-directory: web
+        run: node --check src/main.js && node --check src/qrs.js && node --check src/indexed-png.js && node --check ../BT3-Web-Modder.js
       - name: Test QRS encoders and indexed PNG
         working-directory: web
         run: npm test
