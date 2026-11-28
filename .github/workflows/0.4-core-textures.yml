@@ -1,0 +1,45 @@
+name: 0.4 core and texture verification
+
+on:
+  push:
+    branches:
+      - wasm-core-prototype
+  pull_request:
+    branches:
+      - wasm-core-prototype
+  workflow_dispatch:
+
+jobs:
+  native:
+    name: Native C core
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+      - name: Build
+        run: cmake --build build --parallel
+      - name: Test
+        run: ctest --test-dir build --output-on-failure
+
+  web:
+    name: QRS and indexed PNG tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install dependencies
+        working-directory: web
+        run: npm install --no-audit --no-fund
+      - name: Test QRS encoders and indexed PNG
+        working-directory: web
+        run: npm test
+      - name: Install Emscripten
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y emscripten
+      - name: Build WebAssembly and browser app
+        working-directory: web
+        run: npm run build
