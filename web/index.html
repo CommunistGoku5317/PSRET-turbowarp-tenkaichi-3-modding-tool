@@ -3,8 +3,8 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="BT3 Modder Web 0.3: esplora archivi AFS, AFL, PAK, 7z, RAR e immagini ISO." />
-    <title>BT3 Modder 0.3 — Web Edition</title>
+    <meta name="description" content="BT3 Modder Web 0.4: archivi BT3, texture QRS indicizzate, TexFile e riferimenti texture dei modelli." />
+    <title>BT3 Modder 0.4 — Web Edition</title>
     <script>
       if (new URLSearchParams(location.search).has('turbowarpStage')) {
         document.documentElement.classList.add('turbowarp-stage');
@@ -16,7 +16,7 @@
     <main class="shell">
       <header class="header">
         <div>
-          <p class="eyebrow">BT3 MODDER · 0.3 PROTOTYPE</p>
+          <p class="eyebrow">BT3 MODDER · 0.4 DEVELOPMENT</p>
           <h1>Web Edition</h1>
           <p class="subtitle">Esplora container e archivi di Budokai Tenkaichi 3.</p>
         </div>
@@ -52,10 +52,41 @@
         </div>
       </section>
 
+      <section class="panel workbench" aria-label="Strumenti texture e modelli">
+        <div class="panel-heading">
+          <div>
+            <h2>Texture workbench 0.4</h2>
+            <p>Seleziona una voce nell’archivio per analizzare i record QRS o i metadati TexFile.</p>
+          </div>
+          <div class="workbench-actions">
+            <button id="analyze-qrs" disabled>Analizza QRS</button>
+            <button id="analyze-texfile" class="secondary" disabled>Analizza TexFile</button>
+          </div>
+        </div>
+        <div id="qrs-results" class="texture-results" hidden></div>
+        <div id="texfile-results" class="texture-results" hidden></div>
+        <div class="model-tools">
+          <div>
+            <h3>Riferimenti texture nei modelli</h3>
+            <p>Carica un singolo stream VIF con terminatore 0x70000000. La scansione e il rebasing seguono MdlTex_RebaseChain del decomp; non interpretano una lista ObjMdlMesh completa.</p>
+          </div>
+          <label class="file-button secondary" for="model-vif-file">Carica stream VIF</label>
+          <input id="model-vif-file" type="file" accept=".vif,.bin,application/octet-stream" />
+          <div class="model-params">
+            <label>TBP0 A <input id="model-tbp" type="number" min="0" max="16383" value="0" /></label>
+            <label>CBP A <input id="model-cbp" type="number" min="0" max="16383" value="0" /></label>
+            <label>TBP0 B <input id="model-tbp2" type="number" min="0" max="16383" value="0" /></label>
+            <label>CBP B + <input id="model-cbp2" type="number" min="0" max="16383" value="0" /></label>
+            <button id="rebase-model" class="secondary" disabled>Rebase ed esporta VIF</button>
+          </div>
+          <p id="model-status" class="small-status">Nessuno stream VIF caricato.</p>
+        </div>
+      </section>
+
       <footer>
         <p>Il browser deve caricare l’intero file in memoria per analizzare 7z/RAR/ISO. Per immagini disco molto grandi usa la versione desktop.</p>
-        <p>Il decoder e il preview QRS esistenti restano separati da questo prototipo: non vengono sostituiti finché i test di confronto non sono completi.</p>
-        <p>Versione 0.3: prototipo in sviluppo, non ancora una release stabile.</p>
+        <p>Le PNG QRS vengono esportate come PNG indicizzati. La reimportazione cambia gli indici dei pixel e mantiene intatta la CLUT originale. TexFile espone metadati GS; non viene ancora ricostruita una VRAM PS2.</p>
+        <p>Versione 0.4: funzioni di analisi e conversione in sviluppo; non è ancora una release stabile.</p>
       </footer>
     </main>
     <script src="./bt3_core.js"></script>
