@@ -122,3 +122,21 @@ html.turbowarp-stage th {
   font-size: 8px;
 }
 html.turbowarp-stage .empty { padding: 12px 5px; }
+
+.workbench { margin-top: 18px; }
+.workbench-actions, .model-params { display: flex; flex-wrap: wrap; gap: 8px; align-items: end; }
+.texture-results { display: grid; gap: 10px; margin-top: 12px; }
+.texture-card { display: grid; grid-template-columns: minmax(100px, 180px) minmax(0, 1fr); gap: 12px; align-items: center; padding: 10px; border: 1px solid var(--line, #334); border-radius: 10px; background: rgba(15, 30, 45, .55); }
+.texture-card canvas { width: 100%; max-height: 180px; image-rendering: pixelated; object-fit: contain; background: #101820; }
+.texture-card p, .model-tools p { margin: 4px 0; color: var(--muted, #aab); font-size: .9rem; }
+.texture-card .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.model-tools { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--line, #334); }
+.model-params { margin-top: 10px; }
+.model-params label { display: grid; gap: 4px; font-size: .82rem; color: var(--muted, #aab); }
+.model-params input { width: 92px; padding: 8px; border-radius: 6px; border: 1px solid #536a7f; background: #101923; color: inherit; }
+.small-status { font-family: ui-monospace, monospace; font-size: .82rem; }
+body .workbench input[type="file"] { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+@media (max-width: 680px) {
+  .texture-card { grid-template-columns: 1fr; }
+  .texture-card canvas { max-width: 100%; max-height: 220px; }
+}
