@@ -1524,6 +1524,70 @@
   else root.BT3_WEB_MODDER_QRS_STAGE2_4_8BIT_IDPAIRS = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);
 
+  async function encodeIndexedPngBlob(width, height, indices, rgbaPalette) {
+    const crc32 = bytes => {
+      let crc = 0xFFFFFFFF;
+      for (const value of bytes) {
+        crc ^= value;
+        for (let bit = 0; bit < 8; bit++) crc = (crc >>> 1) ^ (0xEDB88320 & -(crc & 1));
+      }
+      return (crc ^ 0xFFFFFFFF) >>> 0;
+    };
+    const u32 = (out, offset, value) => {
+      out[offset] = value >>> 24; out[offset+1] = value >>> 16;
+      out[offset+2] = value >>> 8; out[offset+3] = value;
+    };
+    const chunk = (type, data) => {
+      const t = new TextEncoder().encode(type), out = new Uint8Array(12 + data.length);
+      u32(out, 0, data.length); out.set(t, 4); out.set(data, 8);
+      const crcData = new Uint8Array(4 + data.length); crcData.set(t); crcData.set(data, 4);
+      u32(out, 8 + data.length, crc32(crcData)); return out;
+    };
+    const join = parts => {
+      const out = new Uint8Array(parts.reduce((n, p) => n + p.length, 0));
+      let offset = 0; for (const p of parts) { out.set(p, offset); offset += p.length; }
+      return out;
+    };
+    if (!Number.isInteger(width) || !Number.isInteger(height) || width < 1 || height < 1 ||
+        !indices || indices.length !== width * height || !rgbaPalette ||
+        rgbaPalette.length === 0 || rgbaPalette.length % 4 !== 0 || rgbaPalette.length > 1024)
+      throw new Error('Dati PNG indicizzato non validi.');
+    const colors = rgbaPalette.length / 4, depth = colors <= 16 ? 4 : 8;
+    if (colors > (1 << depth)) throw new Error('Palette troppo grande per la profondità PNG.');
+    const rowBytes = Math.ceil(width * depth / 8), raw = new Uint8Array(height * (rowBytes + 1));
+    for (let y = 0; y < height; y++) {
+      const row = y * (rowBytes + 1); raw[row] = 0;
+      for (let x = 0; x < width; x++) {
+        const value = Number(indices[y * width + x]);
+        if (!Number.isInteger(value) || value < 0 || value >= colors)
+          throw new Error('Indice PNG fuori dalla palette.');
+        if (depth === 8) raw[row + 1 + x] = value;
+        else {
+          const p = row + 1 + (x >>> 1);
+          if ((x & 1) === 0) raw[p] = value << 4; else raw[p] |= value;
+        }
+      }
+    }
+    const plte = new Uint8Array(colors * 3), alpha = new Uint8Array(colors);
+    for (let i = 0; i < colors; i++) {
+      plte.set(rgbaPalette.subarray ? rgbaPalette.subarray(i*4, i*4+3) : Array.from(rgbaPalette).slice(i*4,i*4+3), i*3);
+      alpha[i] = rgbaPalette[i*4+3];
+    }
+    let alphaLength = alpha.length; while (alphaLength && alpha[alphaLength-1] === 255) alphaLength--;
+    const ihdr = new Uint8Array(13); u32(ihdr,0,width); u32(ihdr,4,height);
+    ihdr[8]=depth; ihdr[9]=3;
+    if (typeof CompressionStream !== 'function') throw new Error('CompressionStream non disponibile per creare PNG indicizzati.');
+    const reader = new Blob([raw]).stream().pipeThrough(new CompressionStream('deflate')).getReader();
+    const compressedParts=[]; let compressedSize=0;
+    while (true) { const part=await reader.read(); if(part.done) break; compressedParts.push(part.value); compressedSize+=part.value.length; }
+    const compressed = new Uint8Array(compressedSize); let p=0;
+    for(const part of compressedParts){compressed.set(part,p);p+=part.length;}
+    const parts=[new Uint8Array([137,80,78,71,13,10,26,10]),chunk('IHDR',ihdr),chunk('PLTE',plte)];
+    if(alphaLength) parts.push(chunk('tRNS',alpha.subarray(0,alphaLength)));
+    parts.push(chunk('IDAT',compressed),chunk('IEND',new Uint8Array(0)));
+    return new Blob([join(parts)],{type:'image/png'});
+  }
+
   class BT3WebModder {
     constructor() {
       this.afs = null; this.afl = null; this.entries = []; this.names = [];
@@ -1752,6 +1816,7 @@
             fallbackReason: d.fallbackReason || null,
             diagnostic: d.diagnostic || null,
             rgba: new Uint8ClampedArray(d.rgba),
+            palette: new Uint8Array(d.palette),
             indices: d.indices,
             decoder: d.bpp + '-bit indexed + mapper 0x404780',
             layoutStatus: d.bpp === 8
@@ -1807,15 +1872,10 @@
         const controls = document.createElement('div');
         Object.assign(controls.style, { display: 'flex', gap: '6px', flexWrap: 'wrap' });
         controls.appendChild(this.btn('Esporta PNG', () => this.exportQRSPreview(info)));
-        const bppSelect = document.createElement('select');
-        bppSelect.style.cssText = 'padding:7px;border-radius:6px;background:#20364b;color:white;border:1px solid #789';
-        for (const value of [4,8]) {
-          const option=document.createElement('option'); option.value=String(value); option.textContent=value+' bit';
-          if (value===info.bpp) option.selected=true;
-          bppSelect.appendChild(option);
-        }
-        controls.appendChild(bppSelect);
-        const importButton=this.btn('Sostituisci con PNG',()=>this.replaceQrsTexture(info,Number(bppSelect.value)));
+        const formatLabel=document.createElement('small');
+        formatLabel.textContent=info.bpp+'-bit · palette originale bloccata';
+        controls.appendChild(formatLabel);
+        const importButton=this.btn('Reimporta PNG indicizzato',()=>this.replaceQrsTexture(info));
         controls.appendChild(importButton);
         wrap.addEventListener('click',event=>event.stopPropagation());
         wrap.append(canvas, details, meta, controls);
@@ -1823,16 +1883,17 @@
         draw();
       }
     }
-    exportQRSPreview(info) {
-      const canvas = document.createElement('canvas'); canvas.width = info.width; canvas.height = info.height;
-      const ctx = canvas.getContext('2d'); const image = ctx.createImageData(info.width, info.height);
-      image.data.set(info.rgba); ctx.putImageData(image,0,0);
-      canvas.toBlob(blob => {
-        if (!blob) { this.set('Esportazione PNG non riuscita.'); this.render(); return; }
+    async exportQRSPreview(info) {
+      try {
+        const blob = await encodeIndexedPngBlob(info.width, info.height, info.indices, info.palette);
         const name = this.clean(this.names[info.index] || `qrs_${info.index}`)
-          .replace(/\.[^.]+$/, '') + `_QRS_${info.textureOffset.toString(16).toUpperCase()}.png`;
-        this.download(blob, name); this.set('PNG QRS decodificato esportato: palette e mapper 0x404780 applicati.'); this.render();
-      }, 'image/png');
+          .replace(/\\.[^.]+$/, '') + `_QRS_${info.textureOffset.toString(16).toUpperCase()}_indexed.png`;
+        this.download(blob, name);
+        this.set('PNG indicizzato esportato: indici 4/8-bit e palette originale conservati.');
+      } catch (error) {
+        this.set('Esportazione PNG indicizzato non riuscita: ' + error.message);
+      }
+      this.render();
     }
     async parseIndexedPNG(buffer, expectedWidth, expectedHeight) {
       const bytes = new Uint8Array(buffer);
@@ -2067,114 +2128,98 @@
       }
       throw new Error('Tipo archivio non supportato per la ricostruzione.');
     }
-    async replaceQrsTexture(info, requestedBpp) {
+    async replaceQrsTexture(info) {
       try {
-        if (!this.afs || !info || this.selectedIndex !== info.index) throw new Error('Seleziona prima la voce archivio contenente la texture.');
+        if (!this.afs || !info || this.selectedIndex !== info.index)
+          throw new Error('Seleziona prima la voce archivio contenente la texture.');
         const pngFile = await this.pick('.png,image/png');
-        if (pngFile.size > 64 * 1024 * 1024) throw new Error('PNG troppo grande: il limite di importazione è 64 MiB.');
+        if (pngFile.size > 64 * 1024 * 1024) throw new Error('PNG troppo grande: limite 64 MiB.');
         const png = await this.parseIndexedPNG(await pngFile.arrayBuffer(), info.width, info.height);
-        if (png.paletteCount > 256) throw new Error('La palette PNG supera il limite di 256 colori.');
-        let bpp = Number(requestedBpp) === 8 ? 8 : 4;
-        let autoPromoted = false;
-        if (bpp === 4 && png.paletteCount > 16) { bpp = 8; autoPromoted = true; }
-        if (bpp === 4 && png.paletteCount > 16) throw new Error('Una texture 4-bit può avere al massimo 16 colori.');
-        if ((info.width & 1) || (bpp === 4 && (info.height & 3)) || (bpp === 8 && (info.height & 1)))
-          throw new Error('Le dimensioni PNG non sono compatibili con la geometria QRS del formato scelto.');
+        if (png.paletteCount !== info.paletteColors)
+          throw new Error('La palette deve avere esattamente ' + info.paletteColors + ' colori, come la texture originale.');
+        if (!info.palette || info.palette.length !== png.palette.length)
+          throw new Error('Palette originale non disponibile: reimportazione annullata.');
+        for (let i = 0; i < info.palette.length; i++) {
+          if (png.palette[i] !== info.palette[i])
+            throw new Error('Palette modificata al byte ' + i + '. La reimportazione mantiene la palette originale: modifica soltanto gli indici dei pixel.');
+        }
         const decoder = globalThis.BT3_WEB_MODDER_QRS_STAGE2_4_8BIT_IDPAIRS;
         if (!decoder || typeof decoder.encodeQrs4Texture !== 'function' || typeof decoder.encodeQrs8Texture !== 'function')
-          throw new Error('Encoder QRS non inizializzato.');
-        const encodedTexture = bpp === 4
+          throw new Error('Encoder inverso QRS non inizializzato.');
+        const encodedTexture = info.bpp === 4
           ? decoder.encodeQrs4Texture(png.indices, png.width, png.height)
           : decoder.encodeQrs8Texture(png.indices, png.width, png.height);
-        const paletteCount = bpp === 4 ? 16 : 256;
-        const palettePayload = new Uint8Array(paletteCount * 4);
-        for (let i=0;i<png.paletteCount;i++) {
-          const physical = bpp === 8 ? decoder.csm1PaletteIndex(i) : i;
-          const src=i*4,dst=physical*4;
-          palettePayload[dst]=png.palette[src];
-          palettePayload[dst+1]=png.palette[src+1];
-          palettePayload[dst+2]=png.palette[src+2];
-          palettePayload[dst+3]=Math.max(0,Math.min(128,Math.round(png.palette[src+3]/2)));
-        }
         const archiveEntry = this.entries[info.index];
         if (!archiveEntry || !archiveEntry.valid) throw new Error('Voce archivio QRS non valida.');
         const originalBytes = new Uint8Array(await this.afs.slice(archiveEntry.offset,archiveEntry.offset+archiveEntry.size).arrayBuffer());
         const dataOffset = 16;
-        const fakePak = new Uint8Array(dataOffset + originalBytes.length);
-        const fakeView = new DataView(fakePak.buffer);
-        fakeView.setUint32(0,1,true); fakeView.setUint32(4,dataOffset,true); fakeView.setUint32(8,dataOffset+originalBytes.length,true);
-        fakePak.set(originalBytes,dataOffset);
-        const before = decoder.decodeAllQrsTexturesPaired(fakePak);
+        const makeFakePak = bytes => {
+          const pak = new Uint8Array(dataOffset + bytes.length);
+          const view = new DataView(pak.buffer);
+          view.setUint32(0, 1, true);
+          view.setUint32(4, dataOffset, true);
+          view.setUint32(8, dataOffset + bytes.length, true);
+          pak.set(bytes, dataOffset);
+          return pak;
+        };
+        const before = decoder.decodeAllQrsTexturesPaired(makeFakePak(originalBytes));
         const parsedEntry = before.pak.entries[0];
-        const target = parsedEntry.records.find(r=>!r.isPalette && r.offset-dataOffset===info.textureOffset);
-        if (!target || !target.palette) throw new Error('La texture selezionata o la sua palette non è più riconoscibile nel record QRS.');
-        if (target.baseWidth * 2 !== png.width) throw new Error('La larghezza PNG non coincide con la geometria QRS originale.');
-        const allTextures = parsedEntry.records.filter(r=>!r.isPalette);
-        const targetOrdinal = allTextures.indexOf(target);
-        if (targetOrdinal < 0) throw new Error('Ordine dei record QRS non valido.');
-        const paletteConsumers = allTextures.filter(r=>r.palette && r.palette.offset===target.palette.offset);
-        const paletteShared = paletteConsumers.length > 1;
-        const paletteRecord = parsedEntry.records.find(r=>r.isPalette && r.offset===target.palette.offset);
-        if (!paletteRecord) throw new Error('Il record descriptor della palette non è disponibile.');
-        const newBaseHeight = bpp === 4 ? png.height / 4 : png.height / 2;
-        const textureRecordBytes = this.makeQrsRecordWithPayload(originalBytes,target,encodedTexture,{baseHeight:newBaseHeight});
-        const paletteRecordId = bpp === 4 ? 0x5000000b : 0x50000047;
-        const paletteWidth = bpp === 4 ? 8 : 16, paletteHeight = bpp === 4 ? 2 : 16;
-        const paletteRecordBytes = this.makeQrsRecordWithPayload(originalBytes,paletteRecord,palettePayload,{
-          recordId:paletteRecordId,baseWidth:paletteWidth,baseHeight:paletteHeight
-        });
-        const rebuiltEntry = await this.buildQrsEntryReplacement(originalBytes,target,textureRecordBytes,paletteRecord,paletteRecordBytes,paletteShared);
-        const verifyFake = new Uint8Array(dataOffset + rebuiltEntry.length);
-        const verifyView = new DataView(verifyFake.buffer);
-        verifyView.setUint32(0,1,true); verifyView.setUint32(4,dataOffset,true); verifyView.setUint32(8,dataOffset+rebuiltEntry.length,true);
-        verifyFake.set(rebuiltEntry,dataOffset);
-        const after = decoder.decodeAllQrsTexturesPaired(verifyFake);
-        const afterRecords = after.pak.entries[0].records.filter(r=>!r.isPalette);
-        if (afterRecords.length !== allTextures.length) throw new Error('La ricostruzione cambierebbe il numero di record texture QRS.');
-        const newTarget = afterRecords[targetOrdinal];
-        const targetDecoded = after.decoded.find(d=>d.recordOffset===newTarget.offset);
-        if (!targetDecoded || targetDecoded.width!==png.width || targetDecoded.height!==png.height || targetDecoded.bpp!==bpp)
-          throw new Error('Verifica QRS fallita: il decoder non riconosce la texture sostituita nel formato previsto.');
-        for (let i=0;i<png.indices.length;i++) {
-          if (targetDecoded.indices[i]!==png.indices[i]) throw new Error('Verifica QRS fallita: gli indici PNG cambiano durante la ricodifica.');
-          const pi=png.indices[i], p=pi*4, q=i*4;
-          const expectedAlpha=Math.min(255,Math.round(png.palette[p+3]/2)*2);
-          if (targetDecoded.rgba[q]!==png.palette[p] || targetDecoded.rgba[q+1]!==png.palette[p+1] ||
-              targetDecoded.rgba[q+2]!==png.palette[p+2] || targetDecoded.rgba[q+3]!==expectedAlpha)
-            throw new Error('Verifica QRS fallita: la palette ricostruita non coincide con quella PNG.');
+        const target = parsedEntry.records.find(r => !r.isPalette && r.offset - dataOffset === info.textureOffset);
+        if (!target || !target.palette) throw new Error('Il record QRS o la palette originale non sono più riconoscibili.');
+        if (target.palette.offset - dataOffset !== info.paletteOffset)
+          throw new Error('Il collegamento alla palette è cambiato: reimportazione annullata.');
+        if (target.payloadBytes !== encodedTexture.length)
+          throw new Error('La dimensione della codifica non coincide con il record originale.');
+        const targetRecordBytes = this.makeQrsRecordWithPayload(originalBytes, target, encodedTexture, null, null, false);
+        if (targetRecordBytes.length !== target.recordSize)
+          throw new Error('La sostituzione cambierebbe la dimensione del record QRS.');
+        const rebuiltEntry = originalBytes.slice();
+        rebuiltEntry.set(targetRecordBytes, target.offset - dataOffset);
+        const after = decoder.decodeAllQrsTexturesPaired(makeFakePak(rebuiltEntry));
+        const afterEntry = after.pak.entries[0];
+        const afterTarget = afterEntry.records.find(r => !r.isPalette && r.offset - dataOffset === info.textureOffset);
+        const targetDecoded = after.decoded.find(d => d.recordOffset === afterTarget.offset);
+        if (!targetDecoded || targetDecoded.width !== png.width || targetDecoded.height !== png.height || targetDecoded.bpp !== info.bpp)
+          throw new Error('Verifica QRS fallita: la texture ricostruita non è decodificabile.');
+        for (let i = 0; i < png.indices.length; i++) {
+          if (targetDecoded.indices[i] !== png.indices[i])
+            throw new Error('Round-trip QRS fallito: indice differente alla posizione ' + i + '.');
         }
-        const beforeByOffset=new Map(before.decoded.map(d=>[d.recordOffset,d]));
-        const afterByOffset=new Map(after.decoded.map(d=>[d.recordOffset,d]));
-        for (let i=0;i<allTextures.length;i++) {
-          if (i===targetOrdinal) continue;
-          const oldTexture=beforeByOffset.get(allTextures[i].offset);
-          const newTexture=afterByOffset.get(afterRecords[i].offset);
-          if (oldTexture && !newTexture) throw new Error('Verifica interrotta: una texture vicina non sarebbe più decodificabile.');
-          if (oldTexture && newTexture) {
-            if (oldTexture.width!==newTexture.width || oldTexture.height!==newTexture.height || oldTexture.bpp!==newTexture.bpp ||
-                oldTexture.rgba.length!==newTexture.rgba.length)
-              throw new Error('Verifica interrotta: la sostituzione altererebbe la geometria di un’altra texture.');
-            for (let j=0;j<oldTexture.rgba.length;j++) if (oldTexture.rgba[j]!==newTexture.rgba[j])
-              throw new Error('Verifica interrotta: la palette o i pixel di un’altra texture cambierebbero.');
-          }
+        if (!targetDecoded.palette || targetDecoded.palette.length !== info.palette.length)
+          throw new Error('La palette originale non è stata conservata.');
+        for (let i = 0; i < info.palette.length; i++) {
+          if (targetDecoded.palette[i] !== info.palette[i])
+            throw new Error('La palette originale è cambiata durante la ricostruzione.');
         }
-        const archiveBlob = await this.rebuildCurrentArchiveWithEntry(info.index,rebuiltEntry);
-        const parsedArchive = this.archiveType==='AFS'
-          ? await this.parseAFSBlob(archiveBlob,'verifica AFS')
-          : await this.parsePAKBlob(archiveBlob,'verifica PAK');
+        const beforeByOffset = new Map(before.decoded.map(d => [d.recordOffset, d]));
+        const afterByOffset = new Map(after.decoded.map(d => [d.recordOffset, d]));
+        for (const oldTexture of before.decoded) {
+          if (oldTexture.recordOffset === target.offset) continue;
+          const relative = oldTexture.recordOffset - dataOffset;
+          const newRecord = afterEntry.records.find(r => !r.isPalette && r.offset - dataOffset === relative);
+          const newTexture = newRecord && afterByOffset.get(newRecord.offset);
+          if (!newTexture) throw new Error('Una texture vicina non è più decodificabile dopo la sostituzione.');
+          if (oldTexture.rgba.length !== newTexture.rgba.length)
+            throw new Error('La geometria di un’altra texture sarebbe modificata.');
+          for (let j = 0; j < oldTexture.rgba.length; j++)
+            if (oldTexture.rgba[j] !== newTexture.rgba[j])
+              throw new Error('La sostituzione altererebbe un’altra texture o una palette condivisa.');
+        }
+        const archiveBlob = await this.rebuildCurrentArchiveWithEntry(info.index, rebuiltEntry);
+        const parsedArchive = this.archiveType === 'AFS'
+          ? await this.parseAFSBlob(archiveBlob, 'verifica AFS')
+          : await this.parsePAKBlob(archiveBlob, 'verifica PAK');
         const patchedEntry = parsedArchive.entries[info.index];
-        if (!patchedEntry || !patchedEntry.valid || patchedEntry.size!==rebuiltEntry.length)
-          throw new Error('Verifica finale dell’archivio fallita: voce sostituita non valida.');
-        const ext=this.archiveType.toLowerCase();
-        const base=this.clean(this.archiveName||('archivio.'+ext)).replace(/\.(afs|pak)$/i,'');
-        const filename=base+'_texture_sostituita.'+ext;
-        this.download(archiveBlob,filename);
-        const paletteMessage=paletteShared
-          ? 'Palette duplicata per non modificare le altre texture che la condividono.'
-          : 'Palette sostituita senza modificare altre texture.';
-        this.set(`PNG importato e verificato: ${png.width}×${png.height}, ${bpp}-bit. ${paletteMessage}${autoPromoted?' PNG con più di 16 colori: formato promosso automaticamente a 8-bit.':''} Archivio ricostruito ed esportato: ${filename}.`);
+        if (!patchedEntry || !patchedEntry.valid || patchedEntry.size !== rebuiltEntry.length)
+          throw new Error('Verifica finale dell’archivio fallita.');
+        const ext = this.archiveType.toLowerCase();
+        const base = this.clean(this.archiveName || ('archivio.' + ext)).replace(/\\.(afs|pak)$/i, '');
+        const filename = base + '_texture_sostituita.' + ext;
+        this.download(archiveBlob, filename);
+        this.set('PNG reimportato e verificato: ' + info.width + '×' + info.height + ', ' + info.bpp +
+          '-bit. Gli indici sono stati ricodificati; la palette originale è rimasta invariata. Archivio esportato: ' + filename + '.');
       } catch (error) {
-        this.set('Sostituzione PNG annullata: ' + error.message);
+        this.set('Reimportazione annullata: ' + error.message);
       }
       this.render();
     }
