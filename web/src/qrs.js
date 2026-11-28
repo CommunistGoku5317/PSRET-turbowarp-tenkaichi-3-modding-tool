@@ -1496,3 +1496,6 @@
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.BT3_WEB_MODDER_QRS_STAGE2_4_8BIT_IDPAIRS = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);
+const QRS = globalThis.BT3_WEB_MODDER_QRS_STAGE2_4_8BIT_IDPAIRS;
+if (!QRS) throw new Error('Modulo QRS non inizializzato.');
+export { QRS };
