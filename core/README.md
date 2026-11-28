@@ -1,19 +1,43 @@
-# BT3 shared C core — 0.3.0
+# BT3 shared C core — 0.4.0
 
-This is the shared, UI-independent parser used by the native desktop tools and by the browser edition after compiling it to WebAssembly.
+The shared C library contains the 0.3 archive parsers and the new decomp-derived texture metadata / model-stream helpers. It is UI-independent and is built natively and as WebAssembly.
 
-## Implemented in 0.3.0
+## Archive APIs retained from 0.3
 
-- **Spike PAK:** validates the count/offset table and reports entry ranges. It follows the checked-in JavaScript parser's current rules: a non-zero entry count, first payload offset after the table and 16-byte aligned, monotonically increasing offsets inside the file. Extra bytes after the final indexed entry are tolerated to preserve existing behavior.
-- **AFS:** validates the `AFS\0` header and `(offset, size)` table. It reports each entry range as valid or invalid instead of rejecting a whole archive because one entry range is bad, matching the existing web parser's behavior.
-- **AFL:** validates the `AFL\0` header and 32-byte names table, with the count stored at byte 12, and exposes a trimmed entry name.
-- **Container identification:** detects structurally valid AFS, PAK, or AFL input.
+- **Spike PAK:** validates the count and offset table and returns entry ranges. The first payload offset must follow the table and be 16-byte aligned; offsets must be monotonic and inside the file.
+- **AFS:** validates the `AFS\0` header and (offset, size) table. Each entry range is reported valid/invalid individually.
+- **AFL:** validates the `AFL\0` header, count at byte 12 and 32-byte names.
+- **Container identification:** recognizes structurally valid AFS, PAK or AFL input.
 
-The core does **not** decode QRS textures, pair palettes, encode replacement PNGs, or rebuild AFS/PAK files. Those operations remain in the current JavaScript implementation until their output can be compared against independent fixtures.
+## New texture metadata APIs
+
+Header: `bt3_texture.h`; implementation: `bt3_texture.c`.
+
+### TexFile / TexEntry
+
+`bt3_texfile_validate` checks the 16-byte file header and entry table. `entOfs` is measured in 32-bit words. `bt3_texfile_entry_info` exposes the disk fields of one 0x40-byte TexEntry:
+
+- pixel and CLUT offsets/sizes, with per-range validity flags;
+- TBP/CBP steps and offsets;
+- pixel/CLUT BITBLTBUF fields;
+- TEX0 low/high words, PSM, and storage dimensions derived from TW/TH.
+
+The pointer fields at the end of the decomp's runtime TexEntry are not treated as on-disk pointers. Pixel/CLUT offsets are relocated from the resource base, matching `Res_RelocateOffsets`.
+
+**Important:** these offsets refer to GS upload packet data handled by `Tex_UploadPixels` / `Tex_UploadClut`. The core does not yet decode their payload into PNG, emulate GS swizzling, or rebuild VRAM. It is a metadata parser, not a GS texture decoder.
+
+### Single-stream model TEX0 references
+
+`bt3_model_vif_scan` and `bt3_model_vif_rebase` implement the known single-stream behavior from `MdlTex_RebaseChain`:
+
+- find `0x6C058000` records until `0x70000000`;
+- locate the first TEX0 at words 5/6 and second at words 9/10;
+- scan minimum TBP0 / CBP from TEX0A;
+- rebase the four pointer fields using the supplied bases.
+
+These APIs accept one bounded, word-aligned VIF stream. They do not parse the full ObjMdlMesh linked list or whole model format. A complete model editor needs real mesh-container fixtures and validated record bounds.
 
 ## Native build and tests
-
-From the repository root:
 
 ```sh
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
@@ -21,43 +45,22 @@ cmake --build build --parallel
 ctest --test-dir build --output-on-failure
 ```
 
-The tests cover valid and malformed PAK/AFS/AFL tables, invalid entry ranges, entry names, and container identification.
+The C tests cover PAK/AFS/AFL structure, TexFile entry metadata and a single VIF material stream scan/rebase.
 
-## WebAssembly build
+## WebAssembly
 
-Install the Emscripten SDK and make sure `emcc` is on `PATH`. From `web/`:
+The web build compiles both `bt3_core.c` and `bt3_texture.c`. The exported functions include the 0.3 archive API plus TexFile and VIF helpers. From `web/`:
 
 ```sh
 npm install
 npm run build:wasm
+npm test
 npm run dev
 ```
 
-The build writes `web/public/bt3_core.js` and `web/public/bt3_core.wasm`. The Vite app loads the generated module asynchronously. For the production bundle, use `npm run build`.
+## Format rules
 
-## Desktop archive reader
-
-When CMake finds LibArchive, it also builds `bt3_archive_cli`. It lists entries in supported generic containers and can extract one regular file by index:
-
-```sh
-./build/bt3_archive_cli game.7z
-./build/bt3_archive_cli --extract 12 game.7z ./out
-```
-
-The CLI requires a new output directory, rejects absolute archive paths and `..` traversal, creates subdirectories under that fresh root, and only writes regular files. It does not extract symlinks or hardlinks.
-
-## Format compatibility requirements
-
-- Preserve **7z** and **RAR/RAR5** open/list/extract paths. LibArchive's RAR coverage has limitations and should be verified against real files used by the project.
-- Preserve **ISO** browsing/extraction. LibArchive provides an ISO9660 reader with Joliet/Rock Ridge support depending on build; this is not a guarantee for UDF or every proprietary disc layout.
-- Keep **AFS, AFL, and Spike PAK** handlers separate from generic container handling. A 7z/RAR/ISO container may contain an AFS or PAK that is then passed to this core.
-- Keep current **QRS 4-bit/8-bit preview and replacement** behavior untouched until independent image fixtures verify a port.
-
-The browser prototype uses `archive-wasm` 2.1.0 (LibArchive compiled to WebAssembly) for generic containers. The native CLI uses the system LibArchive. Both use the same format-family implementation, but platform/build differences and RAR variants still need fixture testing. See the top-level README and `web/README.md`.
-
-## Rules for future changes
-
-- No browser DOM, TurboWarp, filesystem, or UI dependencies in this directory.
-- Compile the same C sources natively and with Emscripten.
-- Do not change format rules based on guesswork. Add real fixtures and tests first.
-- Do not replace working archive/QRS code until the new path passes parity tests.
+- The QRS PAK record parser remains separate from TexFile.
+- Do not interpret TexFile DMA packet payloads as plain bitmap data without a verified GS transfer/PSM decoder.
+- Do not infer the full mesh list layout from the single-stream VIF function.
+- Add independent fixtures and tests before broadening supported TexFile or model layouts.
