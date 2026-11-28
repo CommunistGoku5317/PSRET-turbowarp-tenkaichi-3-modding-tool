@@ -1210,7 +1210,7 @@
       paletteOffset: palette.offset, bpp, width, height,
       baseWidth: textureRecord.baseWidth, baseHeight: textureRecord.baseHeight,
       sourceBytes, paletteCount: palette.paletteCount, paletteStorageMode,
-      indices: decoded.indices, rgba,
+      indices: decoded.indices, rgba, palette: paletteRgba,
       passCount: decoded.passCount || 1,
       decoderMode: decoded.mode || null,
       nativeSpecialPath: decoded.nativeSpecialPath || null,
@@ -1383,12 +1383,131 @@
     return Object.freeze({ pak, decoded: Object.freeze(decoded), skipped: Object.freeze(skipped) });
   }
 
+  function encodeQrs4Texture(indices, width, height) {
+    width = int(width, 'width');
+    height = int(height, 'height');
+    if (!width || !height || (width & 1) || (height & 3))
+      throw new RangeError('Il formato QRS 4-bit richiede larghezza pari e altezza multipla di 4.');
+    const pixelCount = width * height;
+    if (!Number.isSafeInteger(pixelCount) || !indices || indices.length !== pixelCount)
+      throw new RangeError('Numero di indici QRS 4-bit non coerente con le dimensioni.');
+    const dwordWidth = width >>> 1;
+    const dwordHeight = height >>> 2;
+    const pixelStride = Math.max(1, Math.ceil(width / 128));
+    const dwordStride = Math.max(1, Math.ceil(dwordWidth / 64));
+    let maxByte = -1, maxDword = -1;
+    const addresses = new Array(pixelCount);
+    const used = new Set();
+    for (let y = 0; y < height; y++) for (let x = 0; x < width; x++) {
+      const index = y * width + x;
+      const value = Number(indices[index]);
+      if (!Number.isInteger(value) || value < 0 || value > 15)
+        throw new RangeError('Indice QRS 4-bit fuori intervallo alla posizione ' + index + '.');
+      const address = scratchNibbleAddress4(x, y, pixelStride, 0);
+      const key = address.byteOffset * 2 + (address.highNibble ? 1 : 0);
+      if (used.has(key)) throw new Error('Collisione nella mappa inversa QRS 4-bit.');
+      used.add(key);
+      addresses[index] = address;
+      if (address.byteOffset > maxByte) maxByte = address.byteOffset;
+    }
+    const dwordMap = new Array(dwordWidth * dwordHeight);
+    const dwordUsed = new Set();
+    for (let y = 0; y < dwordHeight; y++) for (let x = 0; x < dwordWidth; x++) {
+      const p = scratchDwordIndex404780(x, y, dwordStride, 0);
+      if (dwordUsed.has(p)) throw new Error('Collisione DWORD nella mappa inversa QRS 4-bit.');
+      dwordUsed.add(p);
+      dwordMap[y * dwordWidth + x] = p;
+      if (p > maxDword) maxDword = p;
+    }
+    const scratch = new Uint8Array(Math.max(maxByte + 1, (maxDword + 1) * 4));
+    for (let i = 0; i < pixelCount; i++) {
+      const a = addresses[i], value = Number(indices[i]);
+      const old = scratch[a.byteOffset];
+      scratch[a.byteOffset] = a.highNibble
+        ? ((old & 0x0F) | (value << 4))
+        : ((old & 0xF0) | value);
+    }
+    const packed = new Uint8Array(pixelCount >>> 1);
+    for (let i = 0; i < dwordMap.length; i++) {
+      const from = dwordMap[i] * 4, to = i * 4;
+      if (from + 4 > scratch.length) throw new Error('Mappa QRS 4-bit fuori dal buffer scratch.');
+      packed.set(scratch.subarray(from, from + 4), to);
+    }
+    const check = decodeQrs4Texture(packed, width, height).indices;
+    for (let i = 0; i < pixelCount; i++) if (check[i] !== Number(indices[i]))
+      throw new Error('Verifica inversa QRS 4-bit fallita alla posizione ' + i + '.');
+    return packed;
+  }
+
+  function encodeQrs8Block(indices, width, height) {
+    const dwordWidth = width >>> 1;
+    const dwordHeight = height >>> 1;
+    const pixelStride = Math.max(1, Math.ceil(width / 64));
+    const dwordStride = Math.max(1, Math.ceil(dwordWidth / 64));
+    let maxByte = -1, maxDword = -1;
+    const addresses = new Array(width * height);
+    const used = new Set();
+    for (let y = 0; y < height; y++) for (let x = 0; x < width; x++) {
+      const i = y * width + x, value = Number(indices[i]);
+      if (!Number.isInteger(value) || value < 0 || value > 255)
+        throw new RangeError('Indice QRS 8-bit fuori intervallo alla posizione ' + i + '.');
+      const address = scratchByteOffset8(x, y, pixelStride, 0);
+      if (used.has(address)) throw new Error('Collisione nella mappa inversa QRS 8-bit.');
+      used.add(address);
+      addresses[i] = address;
+      if (address > maxByte) maxByte = address;
+    }
+    const dwordMap = new Array(dwordWidth * dwordHeight);
+    const dwordUsed = new Set();
+    for (let y = 0; y < dwordHeight; y++) for (let x = 0; x < dwordWidth; x++) {
+      const p = scratchDwordIndex404780(x, y, dwordStride, 0);
+      if (dwordUsed.has(p)) throw new Error('Collisione DWORD nella mappa inversa QRS 8-bit.');
+      dwordUsed.add(p);
+      dwordMap[y * dwordWidth + x] = p;
+      if (p > maxDword) maxDword = p;
+    }
+    const scratch = new Uint8Array(Math.max(maxByte + 1, (maxDword + 1) * 4));
+    for (let i = 0; i < addresses.length; i++) scratch[addresses[i]] = Number(indices[i]);
+    const packed = new Uint8Array(width * height);
+    for (let i = 0; i < dwordMap.length; i++) {
+      const from = dwordMap[i] * 4, to = i * 4;
+      if (from + 4 > scratch.length) throw new Error('Mappa QRS 8-bit fuori dal buffer scratch.');
+      packed.set(scratch.subarray(from, from + 4), to);
+    }
+    const check = decodeQrs8Block(packed, width, height);
+    for (let i = 0; i < indices.length; i++) if (check[i] !== Number(indices[i]))
+      throw new Error('Verifica inversa QRS 8-bit fallita alla posizione ' + i + '.');
+    return packed;
+  }
+
+  function encodeQrs8Texture(indices, width, height) {
+    width = int(width, 'width');
+    height = int(height, 'height');
+    if (!width || !height || (width & 1) || (height & 1))
+      throw new RangeError('Il formato QRS 8-bit richiede larghezza e altezza pari.');
+    if (!indices || indices.length !== width * height)
+      throw new RangeError('Numero di indici QRS 8-bit non coerente con le dimensioni.');
+    const out = new Uint8Array(width * height);
+    for (let y0 = 0; y0 < height; y0 += 64) {
+      const blockHeight = Math.min(64, height - y0);
+      if (blockHeight & 1) throw new RangeError('L’ultima fascia QRS 8-bit deve avere altezza pari.');
+      const start = y0 * width;
+      const block = indices.subarray ? indices.subarray(start, start + width * blockHeight)
+        : Array.prototype.slice.call(indices, start, start + width * blockHeight);
+      out.set(encodeQrs8Block(block, width, blockHeight), start);
+    }
+    const check = decodeQrs8Texture(out, width, height).indices;
+    for (let i = 0; i < check.length; i++) if (check[i] !== Number(indices[i]))
+      throw new Error('Verifica inversa QRS 8-bit fallita alla posizione ' + i + '.');
+    return out;
+  }
+
   const api = Object.freeze({
     scratchByteOffset8, scatter8, gather8,
     scratchNibbleAddress4, scatter4, gather4,
     scratchDwordIndex404780, bytesToDwordsLE, finalStage404780, scatterDwords404600,
     decode4SinglePassExplorer, plan4MultiPassExplorer,
-    parseQrsPak, decodeQrsTexture, decodeAllQrsTextures, decodeQrs4Texture, decodeQrs8Texture,
+    parseQrsPak, decodeQrsTexture, decodeAllQrsTextures, decodeQrs4Texture, decodeQrs8Texture, encodeQrs4Texture, encodeQrs8Texture,
     parseQrsPakPairs, pairQrsRecordsInEntry, getQrsPaletteDescriptor, decodeQrsTexturePaired, decodeAllQrsTexturesPaired,
     csm1PaletteIndex, resolveQrsPaletteStorageMode, paletteBytesToRgba, gsAlphaToRgbaByte,
     packPaletteIndices4, unpackPaletteIndices4, copyPaletteIndices8,
