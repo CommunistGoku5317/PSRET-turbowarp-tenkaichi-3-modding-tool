@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(BT3ModderCore VERSION 0.3.0 LANGUAGES C)
+project(BT3ModderCore VERSION 0.4.0 LANGUAGES C)
 
 option(BT3_BUILD_ARCHIVE_CLI "Build the libarchive-backed 7z/RAR/ISO desktop CLI" ON)
 
@@ -7,7 +7,7 @@ set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS OFF)
 
-add_library(bt3_core STATIC core/bt3_core.c)
+add_library(bt3_core STATIC core/bt3_core.c core/bt3_texture.c)
 target_include_directories(bt3_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/core)
 target_compile_options(bt3_core PRIVATE
     $<$<C_COMPILER_ID:GNU,Clang>:-Wall;-Wextra;-Werror;-pedantic>
